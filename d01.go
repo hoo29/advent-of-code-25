@@ -29,14 +29,10 @@ func main() {
 		if !left {
 			dial = utils.Mod(dial+num, 100)
 			p2 += (oldDial + num) / 100
-			if oldDial == 0 && ((oldDial+num)%100) == 0 {
-				p2 -= 1
-			}
 		} else {
 			dial = utils.Mod(dial-num, 100)
 			p2 += (100 - oldDial + num) / 100
-			// fairly sure I am overcounting in one branch and undercounting in the other but it works!
-			if oldDial == 0 && ((100-oldDial+num)/100) > 0 {
+			if oldDial == 0 && ((100+num)/100) > 0 {
 				p2 -= 1
 			}
 		}
