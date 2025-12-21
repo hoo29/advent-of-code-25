@@ -12,7 +12,7 @@ func ReadFile(day string, test bool) ([]string, error) {
 	if test {
 		fileName = fmt.Sprintf("%s_t", day)
 	}
-	path := filepath.Join("data", fileName)
+	path := filepath.Join("..", "data", fileName)
 	var data []string
 	file, err := os.Open(path)
 	if err != nil {
