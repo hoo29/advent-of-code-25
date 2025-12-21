@@ -3,8 +3,10 @@ package utils
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 func ReadFile(day string, test bool) ([]string, error) {
@@ -24,11 +26,7 @@ func ReadFile(day string, test bool) ([]string, error) {
 		line := scanner.Text()
 		data = append(data, line)
 	}
-	err = scanner.Err()
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return data, nil
+	return data, scanner.Err()
 }
 
 func Mod(val int, mod int) int {
@@ -40,4 +38,12 @@ func Abs(val int) int {
 		val = -val
 	}
 	return val
+}
+
+func Atoi(val string) int {
+	valInt, err := strconv.Atoi(val)
+	if err != nil {
+		log.Fatalf("number parse issue in %v", val)
+	}
+	return valInt
 }
