@@ -7,15 +7,7 @@ import (
 	"time"
 )
 
-func main() {
-	test := false
-	day := "d06"
-
-	data, err := utils.ReadFile(day, test)
-	if err != nil {
-		log.Fatalf("failed to read file: %v", err)
-	}
-
+func p1(data []string) {
 	var numbers [][]int
 	var ops []string
 	for _, line := range data {
@@ -49,16 +41,46 @@ func main() {
 
 	log.Printf("p1 took %s", time.Since(start))
 	log.Printf("p1 ans %v", ans)
+}
 
-	start = time.Now()
-	for i := 0; i < len(ops); i++ {
-		maxDigitCount := 0
-		for j := 0; j < len(numbers); j++ {
-			// for
-			if ops[i] == "+" {
-				val += numbers[j][i]
+func main() {
+	test := false
+	day := "d06"
+
+	data, err := utils.ReadFile(day, test)
+	if err != nil {
+		log.Fatalf("failed to read file: %v", err)
+	}
+	p1(data)
+
+	start := time.Now()
+	ans := 0
+	opLineInd := 4
+	if test {
+		opLineInd = 3
+	}
+	ops := data[opLineInd]
+	ind := 0
+	for ; ind < len(ops); ind++ {
+		op := string(ops[ind])
+		var cols []int
+		for ; ind == len(ops)-1 || (ind < len(ops) && string(ops[ind+1]) == " "); ind++ {
+			val := 0
+			for j := 0; j < opLineInd; j++ {
+				digit := string(data[j][ind])
+				if digit == " " {
+					continue
+				}
+				val = (val * 10) + utils.Atoi(digit)
+			}
+			cols = append(cols, val)
+		}
+		val := cols[0]
+		for j := 1; j < len(cols); j++ {
+			if op == "+" {
+				val += cols[j]
 			} else {
-				val *= numbers[j][i]
+				val *= cols[j]
 			}
 		}
 		ans += val
