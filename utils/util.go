@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"unicode/utf8"
 )
 
 func ReadFile(day string, test bool) ([]string, error) {
@@ -46,4 +47,12 @@ func Atoi(val string) int {
 		log.Fatalf("number parse issue in %v", val)
 	}
 	return valInt
+}
+
+func GetRuneFromString(val string, ind int) rune {
+	char, _ := utf8.DecodeRuneInString(val[ind:])
+	if char == utf8.RuneError {
+		log.Fatalf("Rune error")
+	}
+	return char
 }
