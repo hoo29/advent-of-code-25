@@ -56,3 +56,14 @@ func GetRuneFromString(val string, ind int) rune {
 	}
 	return char
 }
+
+func Combinations[T any](sl []T) [][]T {
+	size := len(sl)
+	res := make([][]T, 0, (size*(size-1))/2)
+	for i := range size {
+		for j := i + 1; j < size; j++ {
+			res = append(res, []T{sl[i], sl[j]})
+		}
+	}
+	return res
+}
