@@ -3,8 +3,9 @@ package main
 import (
 	"aoc/utils"
 	"log/slog"
-	"math"
 	"runtime"
+	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -61,48 +62,29 @@ func calcAreaCord(a, b coord) int {
 	return (max(a.x, b.x) - min(a.x, b.x) + 1) * (max(a.y, b.y) - min(a.y, b.y) + 1)
 }
 
-func inShape(pos coord, allEdges map[uint64]bool, edgesX map[coord]bool, edgesY map[coord]bool, minX, maxX, minY, maxY int) bool {
-	// slip and slide off the wall if we are on one
-	x := pos.x
-	for {
-		key := uint64(x)<<32 | uint64(pos.y)
-		_, ok := allEdges[key]
-		if ok {
-			x++
-		} else {
-			break
-		}
+func inShape(pos coord, yCoords map[int][]int) bool {
+
+	row := yCoords[pos.y]
+	// too far to the left
+	if pos.x < row[0] {
+		return false
 	}
-	if x >= maxX {
+	// too far to the right
+	if pos.x > row[len(row)-1] {
+		return false
+	}
+	rowInd := sort.SearchInts(row, pos.x)
+	// if we are on a wall must be in shape
+	if row[rowInd] == pos.x {
 		return true
 	}
-	crossCount := 0
 
-	for ; x <= maxX; x++ {
-		key := uint64(x)<<32 | uint64(pos.y)
-		_, ok := allEdges[key]
-		if ok {
+	// this seems like it should be wrong but it works so...
+	crossCount := 1
+	for ; rowInd < len(row)-1; rowInd++ {
+		if row[rowInd+1] != row[rowInd]+1 {
 			crossCount++
 		}
-		for {
-			key := uint64(x)<<32 | uint64(pos.y)
-			_, ok := allEdges[key]
-			if ok {
-				x++
-			} else {
-				break
-			}
-		}
-		// x++
-
-		// // then keep going until we are off wall
-		// for {
-		// 	_, ok := edges[coord{x: x, y: pos.y}]
-		// 	if !ok {
-		// 		break
-		// 	}
-		// 	x++
-		// }
 	}
 	return crossCount%2 == 1
 }
@@ -112,14 +94,7 @@ func p2(data []string) {
 	ans := 0
 
 	coords := coordsStructFromData(data)
-	edgesX := map[coord]bool{}
-	edgesY := map[coord]bool{}
-	// allEdges := map[coord]bool{}
-	allEdges := make(map[uint64]bool)
-	minX := math.MaxInt
-	maxX := math.MinInt
-	minY := math.MaxInt
-	maxY := math.MinInt
+	yCoords := map[int][]int{}
 	for i := range coords {
 		c1 := coords[i]
 		var c2 coord
@@ -128,56 +103,53 @@ func p2(data []string) {
 		} else {
 			c2 = coords[i+1]
 		}
-		if c1.x > maxX {
-			maxX = c1.x
-		}
-		if c1.x < minX {
-			minX = c1.x
-		}
-		if c1.y > maxY {
-			maxY = c1.y
-		}
-		if c1.y < minY {
-			minY = c1.y
-		}
-		// edges[c1] = true
-		// edges[c2] = true
 		if c1.x == c2.x {
-			for y := min(c1.y, c2.y); y <= max(c1.y, c2.y); y++ {
-				// edgesY[coord{x: c1.x, y: y}] = true
-				key := uint64(c1.x)<<32 | uint64(y)
-				allEdges[key] = true
-
+			if c1.y < c2.y {
+				for y := c1.y; y < c2.y; y++ {
+					yCoords[y] = append(yCoords[y], c1.x)
+				}
+			} else {
+				for y := c1.y; y > c2.y; y-- {
+					yCoords[y] = append(yCoords[y], c1.x)
+				}
 			}
 		} else {
-			for x := min(c1.x, c2.x); x <= max(c1.x, c2.x); x++ {
-				// edgesX[coord{x: x, y: c1.y}] = true
-				key := uint64(x)<<32 | uint64(c1.y)
-				allEdges[key] = true
+			if c1.x < c2.x {
+				for x := c1.x; x < c2.x; x++ {
+					yCoords[c1.y] = append(yCoords[c1.y], x)
+				}
+			} else {
+				for x := c1.x; x > c2.x; x-- {
+					yCoords[c1.y] = append(yCoords[c1.y], x)
+				}
 			}
 		}
+	}
+	for _, v := range yCoords {
+		slices.Sort(v)
 	}
 	combs := utils.Combinations(coords)
 
 	// for every combo
 	maxGoroutines := runtime.NumCPU()
-	guard := make(chan struct{}, maxGoroutines)
+	guard := make(chan bool, maxGoroutines)
+	// guard := make(chan bool, 1)
+	defer close(guard)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	done := 0
 	for outerInd, outerC := range combs {
-		guard <- struct{}{}
+		guard <- true
 		wg.Add(1)
 		go func(ind int, c []coord) {
 			defer wg.Done()
 			defer func() { <-guard }()
 
-			// if ind%100 == 0 {
-			// 	slog.Info("progress", "ind", ind, "len", len(combs))
-			// 	// if ind == 100 {
-			// 	// 	return
-			// 	// }
-			// }
+			// ignore straight line matches
+			if c[0].x == c[1].x || c[0].y == c[1].y {
+				return
+			}
+
 			toCheck := []coord{}
 			// for every point on both perimeters
 			for x := min(c[0].x, c[1].x) + 1; x <= max(c[0].x, c[1].x); x++ {
@@ -199,28 +171,26 @@ func p2(data []string) {
 			// check if inside shape
 			allInside := true
 			for _, check := range toCheck {
-				if !inShape(check, allEdges, edgesX, edgesY, minX, maxX, minY, maxY) {
+				if !inShape(check, yCoords) {
 					allInside = false
 					break
 				}
 			}
-			if !allInside {
+			if allInside {
+				// if so party
+				area := calcAreaCord(c[0], c[1])
 				mu.Lock()
-				done++
-				slog.Info("progress", "done", done, "len", len(combs))
+				if area > ans {
+					slog.Debug("new largest area", "c1", c[0], "c2", c[1])
+					ans = area
+				}
 				mu.Unlock()
-				return
 			}
-			// if so party
-
-			area := calcAreaCord(c[0], c[1])
 			mu.Lock()
 			done++
-			if area > ans {
-				slog.Debug("new largest area", "c1", c[0], "c2", c[1])
-				ans = area
+			if done%1000 == 0 {
+				slog.Info("progress", "done", done, "len", len(combs))
 			}
-			slog.Info("progress", "done", done, "len", len(combs))
 			mu.Unlock()
 		}(outerInd, outerC)
 	}
@@ -240,8 +210,6 @@ func main() {
 		slog.Error("failed to read file", "err", err)
 	}
 	p1(data)
-	// f, _ := os.Create("cpu2.prof")
-	// pprof.StartCPUProfile(f)
-	// defer pprof.StopCPUProfile()
+	// takes 3 minutes on 16 threads but close enough
 	p2(data)
 }
