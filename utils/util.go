@@ -57,6 +57,15 @@ func GetRuneFromString(val string, ind int) rune {
 	return char
 }
 
+func FindCharIndex(char rune, str string) int {
+	for i := range len(str) {
+		if GetRuneFromString(str, i) == char {
+			return i
+		}
+	}
+	return -1
+}
+
 func Combinations[T any](sl []T) [][]T {
 	size := len(sl)
 	res := make([][]T, 0, (size*(size-1))/2)
